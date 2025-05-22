@@ -1,0 +1,62 @@
+
+# IntelliJ IDEA specific files
+.idea/
+*.iml
+*.iws
+out/
+
+# Python specific files
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.pyc
+*.env
+*.venv
+ENV/
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+*.egg-info/
+dist/
+build/
+.eggs/
+
+# macOS specific files
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+__MACOSX/
+.DS_Store?
+
+# Byte-compiled files
+*.swp
+*.swo
+
+# Logs and databases
+*.log
+
+# Environment files
+.env
+.env.*
+
+# Coverage reports
+htmlcov/
+.coverage
+.coverage.*
+.cache/
+nosetests.xml
+coverage.xml
+*.cover
+*.prof
+
+# Test files
+.tox/
+.pytest_cache/
+.junit/
+
+# Virtual environment
+/.vscode
+*.vscode/
