@@ -62,6 +62,105 @@ def inject(cls_or_func):
 
         return wrapper
 
+def _find_subclass_instance(param_type):
+    """
+    Find an instance of a subclass of the required type in the registry.
+
+    Args:
+        param_type: The type to find a subclass instance for
+
+    Returns:
+        An instance of a subclass if found, None otherwise
+    """
+    for cls, instance in _instances.items():
+        if issubclass(cls, param_type) and cls != param_type:
+            return instance
+    return None
+
+def _get_concrete_subclasses(param_type):
+    """
+    Get a list of concrete subclasses of an abstract type.
+
+    Args:
+        param_type: The abstract type to find concrete subclasses for
+
+    Returns:
+        A list of concrete subclass types
+    """
+    concrete_subclasses = []
+
+    # Look for concrete implementations in the registry
+    for cls in _instances.keys():
+        if issubclass(cls, param_type) and cls != param_type:
+            concrete_subclasses.append(cls)
+
+    # Also look for concrete subclasses that aren't in the registry yet
+    for cls in param_type.__subclasses__():
+        if not inspect.isabstract(cls) and cls not in concrete_subclasses:
+            concrete_subclasses.append(cls)
+
+    return concrete_subclasses
+
+def _create_and_register_instance(cls):
+    """
+    Create an instance of a class and register it as a singleton.
+
+    Args:
+        cls: The class to instantiate
+
+    Returns:
+        The created instance
+    """
+    instance = cls()
+    _instances[cls] = instance
+    return instance
+
+def _get_or_create_instance(param_type):
+    """
+    Get an existing instance or create a new one.
+
+    Args:
+        param_type: The type to get or create an instance for
+
+    Returns:
+        An instance of the specified type
+    """
+    # Check if we already have an instance
+    if param_type in _instances:
+        return _instances[param_type]
+
+    # Check if there's an instance of a subclass
+    subclass_instance = _find_subclass_instance(param_type)
+    if subclass_instance:
+        return subclass_instance
+
+    # Check if the parameter type has any subclasses
+    subclasses = param_type.__subclasses__()
+    if subclasses:
+        concrete_subclasses = _get_concrete_subclasses(param_type)
+
+        if concrete_subclasses:
+            # Use the first concrete implementation found
+            concrete_cls = concrete_subclasses[0]
+            return _create_and_register_instance(concrete_cls)
+        else:
+            # No concrete implementation found, raise an error
+            raise TypeError(f"Cannot create an instance of abstract class {param_type.__name__}")
+    else:
+        # Create a new instance and store it in the registry
+        return _create_and_register_instance(param_type)
+
+def _inject_parameter(param_name, param_type, kwargs):
+    """
+    Inject a parameter into kwargs if not already present.
+
+    Args:
+        param_name: The name of the parameter
+        param_type: The type of the parameter
+        kwargs: The keyword arguments to inject into
+    """
+    kwargs[param_name] = _get_or_create_instance(param_type)
+
 def inject_dependencies(init_func, self, *args, **kwargs):
     """
     Helper function to inject dependencies into an __init__ method.
@@ -82,52 +181,7 @@ def inject_dependencies(init_func, self, *args, **kwargs):
         # Get the type hint for this parameter
         if param_name in type_hints:
             param_type = type_hints[param_name]
-
-            # Try to get or create an instance of this type
-            if param_type in _instances:
-                kwargs[param_name] = _instances[param_type]
-            else:
-                # Check if there's an instance of a subclass of the required type
-                subclass_instance = None
-                for cls, instance in _instances.items():
-                    if issubclass(cls, param_type) and cls != param_type:
-                        subclass_instance = instance
-                        break
-
-                if subclass_instance:
-                    kwargs[param_name] = subclass_instance
-                else:
-                    # Check if the parameter type has any subclasses
-                    subclasses = param_type.__subclasses__()
-
-                    if subclasses:
-                        # Look for concrete implementations of the abstract type
-                        concrete_subclasses = []
-                        for cls in _instances.keys():
-                            if issubclass(cls, param_type) and cls != param_type:
-                                concrete_subclasses.append(cls)
-
-                        # Also look for concrete subclasses that aren't in the registry yet
-                        for cls in param_type.__subclasses__():
-                            if not inspect.isabstract(cls) and cls not in concrete_subclasses:
-                                concrete_subclasses.append(cls)
-
-                        if concrete_subclasses:
-                            # Use the first concrete implementation found
-                            concrete_cls = concrete_subclasses[0]
-
-                            # Create an instance of the concrete implementation
-                            instance = concrete_cls()
-                            _instances[concrete_cls] = instance
-                            kwargs[param_name] = instance
-                        else:
-                            # No concrete implementation found, raise an error
-                            raise TypeError(f"Cannot create an instance of abstract class {param_type.__name__}")
-                    else:
-                        # Create a new instance and store it in the registry
-                        instance = param_type()
-                        _instances[param_type] = instance
-                        kwargs[param_name] = instance
+            _inject_parameter(param_name, param_type, kwargs)
 
     # Call the original __init__ with the injected dependencies
     return init_func(self, *args, **kwargs)
