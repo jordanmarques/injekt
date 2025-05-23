@@ -1,5 +1,5 @@
 import pytest
-from injekt import inject, singleton, reset
+from injekt import inject, reset
 
 # Fixture to reset singleton instances before each test
 @pytest.fixture(autouse=True)
@@ -8,9 +8,9 @@ def reset_singletons():
     yield
     reset()
 
-def test_singleton_decorator():
-    """Test that the singleton decorator creates only one instance of a class."""
-    @singleton
+def test_singleton_behavior():
+    """Test that classes decorated with @inject behave as singletons."""
+    @inject
     class TestClass:
         def __init__(self):
             self.value = 42
@@ -27,7 +27,7 @@ def test_singleton_decorator():
 
 def test_singleton_instances_are_isolated_between_tests():
     """Test that singleton instances are isolated between tests."""
-    @singleton
+    @inject
     class TestClass:
         def __init__(self):
             self.value = 42

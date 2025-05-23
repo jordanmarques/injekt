@@ -80,3 +80,39 @@ def test_replacing_dependencies_for_testing():
     assert result is True
     assert len(mock_logger.messages) == 1
     assert mock_logger.messages[0] == "Something was done"
+
+def test_subclass_injection():
+    """Test that a subclass of a dependency is automatically injected."""
+    # Define a dependency interface
+    class Database:
+        def get_user(self, user_id):
+            # In a real implementation, this would query a database
+            raise NotImplementedError("This should be implemented by concrete classes")
+
+    # Define a concrete implementation of the dependency
+    @inject
+    class BQDatabase(Database):
+        def get_user(self, user_id):
+            # Return data from BigQuery
+            return {"id": user_id, "name": "BQ User"}
+
+    # Define a service that uses the dependency
+    @inject
+    class UserService:
+        def __init__(self, database: Database):
+            self.database = database
+
+        def get_user_name(self, user_id):
+            user = self.database.get_user(user_id)
+            return user["name"]
+
+    # Create a service without explicitly providing a database
+    service = UserService()
+
+    # Test that the service has an instance of BQDatabase injected
+    assert isinstance(service.database, BQDatabase)
+
+    # Test that the service works with the injected BQDatabase
+    user_name = service.get_user_name(123)
+    assert user_name == "BQ User"
+
