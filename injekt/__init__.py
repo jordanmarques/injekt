@@ -1,7 +1,6 @@
-import inspect
 import functools
-from typing import Dict, Type, Any, Callable, get_type_hints, TypeVar, cast
-import abc
+import inspect
+from typing import Dict, Type, Any, get_type_hints, TypeVar
 
 # Registry to store singleton instances
 _instances: Dict[Type, Any] = {}
